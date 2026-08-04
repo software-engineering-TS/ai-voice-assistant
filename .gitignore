@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Conda
+.envs/
+
+# Environment Variables
+.env
+
+# Database
+*.db
+
+# Logs
+logs/
+*.log
+
+# Audio Files
+uploads/
+outputs/
+
+# Whisper Models Cache (optional)
+.cache/
+
+# VS Code
+.vscode/
+
+# OS Files
+.DS_Store
+Thumbs.db
