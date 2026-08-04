@@ -7,7 +7,7 @@ from app.database.init_db import init_db
 from app.exceptions.handlers import register_exception_handlers
 from app.middleware.request_logger import log_requests
 from app.middleware.request_id import request_id_middleware
-# from app.speech.speech_to_text import speech_to_text_service
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -41,7 +41,8 @@ async def home():
         "health": "/health",
     }
 
-# @app.post("/voice")
-# async def voice_chat(file: UploadFile):
-#     stt = get_speech_to_text_service()
-#     text = stt.transcribe(audio_path)
+app.mount(
+    "/outputs",
+    StaticFiles(directory="outputs"),
+    name="outputs",
+)

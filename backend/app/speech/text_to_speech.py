@@ -1,7 +1,9 @@
 from pathlib import Path
+
 import edge_tts
 
 from app.config.logging_config import app_logger
+from app.config.settings import settings
 
 
 class TextToSpeechService:
@@ -10,7 +12,7 @@ class TextToSpeechService:
         self,
         text: str,
         output_file: str,
-    ):
+    ) -> str:
 
         Path(output_file).parent.mkdir(
             parents=True,
@@ -19,13 +21,13 @@ class TextToSpeechService:
 
         communicate = edge_tts.Communicate(
             text=text,
-            voice="en-US-AriaNeural",
+            voice=settings.TTS_VOICE,
         )
 
         await communicate.save(output_file)
 
         app_logger.info(
-            f"Speech saved to {output_file}"
+            f"Generated speech: {output_file}"
         )
 
         return output_file

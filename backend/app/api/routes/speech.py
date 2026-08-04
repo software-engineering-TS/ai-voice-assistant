@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.assistant.assistant import assistant_service
-from app.config import settings
+from app.config.settings import settings
 from app.database.database import get_db
 from app.speech.speech_to_text import get_speech_to_text_service
 from app.speech.text_to_speech import text_to_speech_service
@@ -42,7 +42,7 @@ async def speech_chat(
     )
 
     output_audio = (
-    f"{settings.OUTPUT_DIRECTORY}/{session_id}_response.mp3"
+    f"{settings.OUTPUT_FOLDER}/{session_id}_response.mp3"
 )
     await text_to_speech_service.generate(
     text=response,
@@ -53,4 +53,19 @@ async def speech_chat(
         "transcription": text,
         "response": response,
         "audio_file": output_audio,
+    }
+
+from app.speech.text_to_speech import text_to_speech_service
+
+
+@router.get("/tts-test")
+async def tts_test():
+
+    output = await text_to_speech_service.generate(
+        text="Hello Tarun. Welcome to your AI Voice Assistant.",
+        output_file="outputs/test.mp3",
+    )
+
+    return {
+        "audio": output
     }
