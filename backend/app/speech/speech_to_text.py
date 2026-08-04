@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from app.config.settings import settings
 from faster_whisper import WhisperModel
 
 from app.config.logging_config import app_logger
@@ -11,10 +12,10 @@ class SpeechToTextService:
         app_logger.info("Loading Whisper Model...")
 
         self.model = WhisperModel(
-            "base",
-            device="cpu",
-            compute_type="int8",
-        )
+    settings.WHISPER_MODEL,
+    device=settings.WHISPER_DEVICE,
+    compute_type=settings.WHISPER_COMPUTE_TYPE,
+)
 
         app_logger.info("Whisper Loaded Successfully.")
 
@@ -27,6 +28,4 @@ class SpeechToTextService:
         return text.strip()
 
 
-@lru_cache
-def get_speech_to_text_service():
-    return SpeechToTextService()
+speech_to_text_service = SpeechToTextService()

@@ -25,6 +25,8 @@ class Settings(BaseSettings):
 
     TTS_VOICE: str
     WHISPER_MODEL: str
+    WHISPER_DEVICE: str
+    WHISPER_COMPUTE_TYPE: str
     UPLOAD_FOLDER: str
     OUTPUT_FOLDER: str
 
