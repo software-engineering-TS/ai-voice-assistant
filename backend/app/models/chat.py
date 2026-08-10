@@ -1,22 +1,64 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class ChatRequest(BaseModel):
-    "Request model for chat messages."
+    """
+    Request model for chat messages.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
 
     session_id: str = Field(
         ...,
         min_length=1,
-        description="Unique session identifier",
+        max_length=100,
+        description="Unique conversation session identifier.",
+        examples=["tarun"],
     )
-    
+
     message: str = Field(
         ...,
         min_length=1,
         max_length=1000,
-        description="The message to be sent to the AI voice assistant.",
+        description="User message sent to the AI assistant.",
+        examples=["Explain my experience."],
     )
 
-class ChatResponse(BaseModel):
-    "Response model for chat messages."
+    documents: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional list of document names to use "
+            "for document-grounded responses."
+        ),
+        examples=[
+            ["resume.pdf"]
+        ],
+    )
 
-    response: str 
+
+class ChatResponse(BaseModel):
+    """
+    Response model for chat messages.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+    response: str = Field(
+        ...,
+        description="Generated assistant response.",
+    )
+
+    sources: list[str] = Field(
+        default_factory=list,
+        description="Documents used to generate the response.",
+    )
+
+    processing_time: float | None = Field(
+        default=None,
+        description="Response generation time in seconds.",
+    )
