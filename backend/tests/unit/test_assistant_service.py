@@ -1616,3 +1616,59 @@ def test_assistant_service_uses_ollama_client():
         assistant_module.assistant_service.llm_client
         is assistant_module.ollama_client
     )
+    
+@pytest.mark.asyncio
+async def test_generate_stream_response_with_documents(
+    monkeypatch,
+):
+    service, llm_client = create_service(monkeypatch)
+
+    monkeypatch.setattr(
+        service,
+        "_get_conversation_history",
+        lambda **kwargs: "History",
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_retrieve_context",
+        lambda **kwargs: (
+            "Retrieved context",
+            ["resume.pdf"],
+        ),
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_build_prompt",
+        lambda **kwargs: "Prompt",
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_save_message",
+        lambda **kwargs: None,
+    )
+
+    async def stream_generate(**kwargs):
+        yield "Hello"
+        yield " from"
+        yield " assistant"
+
+    llm_client.stream_generate = stream_generate
+
+    tokens = []
+
+    async for token in service.generate_stream_response(
+        db=FakeDatabase(),
+        session_id="session-123",
+        user_message="Tell me about my experience",
+        documents=["resume.pdf"],
+    ):
+        tokens.append(token)
+
+    assert tokens == [
+        "Hello",
+        " from",
+        " assistant",
+    ]

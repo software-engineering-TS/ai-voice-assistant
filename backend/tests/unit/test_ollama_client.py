@@ -8,14 +8,28 @@ from app.exceptions.custom_exceptions import LLMConnectionError, LLMResponseErro
 from app.llm.ollama_client import OllamaClient
 
 
-def make_client(monkeypatch, base_url="http://localhost:11434",
-                model="llama3.2:3b", timeout=180, max_retries=3):
+def make_client(
+    monkeypatch,
+    base_url="http://localhost:11434",
+    model="llama3.2:3b",
+    timeout=180,
+    max_retries=3,
+):
     settings = MagicMock()
+
     settings.OLLAMA_BASE_URL = base_url
     settings.OLLAMA_MODEL = model
     settings.REQUEST_TIMEOUT = timeout
     settings.MAX_RETRIES = max_retries
-    monkeypatch.setattr("app.llm.ollama_client.settings", settings)
+
+    settings.OLLAMA_TEMPERATURE = 0.2
+    settings.OLLAMA_NUM_PREDICT = 300
+
+    monkeypatch.setattr(
+        "app.llm.ollama_client.settings",
+        settings,
+    )
+
     return OllamaClient()
 
 
@@ -194,10 +208,14 @@ def test_build_payload_without_system_prompt(monkeypatch):
     client = make_client(monkeypatch)
     messages = [{"role": "user", "content": "Hello"}]
     assert client._build_payload(messages, False, None) == {
-        "model": "llama3.2:3b",
-        "messages": messages,
-        "stream": False,
-    }
+    "model": "llama3.2:3b",
+    "messages": messages,
+    "stream": False,
+    "options": {
+        "temperature": 0.2,
+        "num_predict": 300,
+    },
+}
 
 
 def test_build_payload_strips_system_prompt(monkeypatch):
@@ -310,6 +328,10 @@ async def test_generate_success(monkeypatch):
             "model": "llama3.2:3b",
             "messages": [{"role": "user", "content": "Hello"}],
             "stream": False,
+            "options": {
+                "temperature": 0.2,
+                "num_predict": 300,
+            },
         },
     )
 

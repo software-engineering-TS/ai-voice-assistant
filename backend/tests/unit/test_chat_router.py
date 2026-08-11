@@ -295,9 +295,9 @@ async def test_chat_stream_generates_tokens():
         tokens.append(token)
 
     assert tokens == [
-        "Hello",
-        " ",
-        "world",
+        "data: Hello\n\n",
+        "data:  \n\n",
+        "data: world\n\n",
     ]
 
 
@@ -371,8 +371,8 @@ async def test_chat_stream_handles_value_error():
         tokens.append(token)
 
     assert tokens == [
-        "\n\nError: Invalid streaming request"
-    ]
+    "data: Error: Invalid streaming request\n\n"
+]
 
 
 @pytest.mark.asyncio
@@ -408,8 +408,7 @@ async def test_chat_stream_handles_unexpected_error():
         tokens.append(token)
 
     assert tokens == [
-        "\n\nError: Unable to generate "
-        "the response."
+        "data: Error: Unable to generate the response.\n\n"
     ]
 
 

@@ -580,6 +580,10 @@ class OllamaClient:
             "model": self.model,
             "messages": messages,
             "stream": stream,
+            "options": {
+                "temperature": settings.OLLAMA_TEMPERATURE,
+                "num_predict": settings.OLLAMA_NUM_PREDICT,
+            },
         }
 
         if system_prompt:

@@ -151,9 +151,9 @@ async def chat_stream(
         Wrap the assistant streaming generator so that
         errors occurring during streaming are logged.
         """
-
+    
         try:
-
+        
             async for token in (
                 assistant_service.generate_stream_response(
                     db=db,
@@ -162,36 +162,37 @@ async def chat_stream(
                     documents=request.documents,
                 )
             ):
-
+    
                 if token:
-
-                    yield token
-
+                
+                    yield f"data: {token}\n\n"
+    
         except ValueError as exc:
-
+        
             app_logger.warning(
                 "Invalid streaming request | "
                 f"Session={request.session_id} | "
                 f"Error={exc}"
             )
-
+    
             yield (
-                "\n\n"
+                "data: "
                 "Error: "
                 f"{str(exc)}"
+                "\n\n"
             )
-
+    
         except Exception:
-
+        
             app_logger.exception(
                 "Streaming chat failed | "
                 f"Session={request.session_id}"
             )
-
+    
             yield (
+                "data: "
+                "Error: Unable to generate the response."
                 "\n\n"
-                "Error: Unable to generate "
-                "the response."
             )
 
     return StreamingResponse(

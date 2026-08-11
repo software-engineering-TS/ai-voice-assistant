@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     )
 
     OLLAMA_MODEL: str = "llama3.2:3b"
+    
+    OLLAMA_TEMPERATURE: float = 0.2
+
+    OLLAMA_NUM_PREDICT: int = 400
 
     MAX_RETRIES: int = Field(
         default=3,
