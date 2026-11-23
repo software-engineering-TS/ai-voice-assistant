@@ -103,7 +103,7 @@ class SpeechService:
             return {
                 "transcription": transcription,
                 "response": response,
-                "audio_file": f"{settings.OUTPUT_FOLDER}/{output_filename}",
+                "audio_file": f"outputs/{output_filename}",
             }
         finally:
             try:
