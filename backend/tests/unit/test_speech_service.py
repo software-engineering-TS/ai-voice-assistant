@@ -216,3 +216,29 @@ async def test_tts_test_generates_unique_file(speech_service, monkeypatch):
 
     assert first["audio"] != second["audio"]
     assert len(paths) == 2
+
+@pytest.mark.asyncio
+async def test_process_returns_text_when_tts_provider_fails(speech_service, monkeypatch):
+    patch_successful_pipeline(monkeypatch)
+
+    async def unavailable_tts(text, output_file):
+        raise RuntimeError("Edge TTS returned HTTP 403")
+
+    monkeypatch.setattr(
+        speech_module.text_to_speech_service,
+        "generate",
+        unavailable_tts,
+    )
+
+    result = await speech_service.process(
+        object(),
+        "session-tts-fallback",
+        make_upload(),
+    )
+
+    assert result["transcription"] == "recognized words"
+    assert result["response"] == "Assistant reply"
+    assert result["audio_file"] is None
+    assert "temporarily unavailable" in result["audio_error"]
+    assert list(Path(speech_module.settings.UPLOAD_FOLDER).iterdir()) == []
+    assert list(Path(speech_module.settings.OUTPUT_FOLDER).iterdir()) == []
