@@ -169,7 +169,7 @@ async def test_process_rejects_empty_assistant_response(speech_service, monkeypa
 
 
 @pytest.mark.asyncio
-async def test_process_propagates_tts_failure_and_cleans_temp_audio(speech_service, monkeypatch):
+async def test_process_keeps_text_response_when_tts_fails_and_cleans_partial_output(speech_service, monkeypatch):
     patch_successful_pipeline(monkeypatch)
 
     async def fail_after_partial_output(text, output_file):
@@ -182,9 +182,12 @@ async def test_process_propagates_tts_failure_and_cleans_temp_audio(speech_servi
         fail_after_partial_output,
     )
 
-    with pytest.raises(RuntimeError, match="tts failed"):
-        await speech_service.process(object(), "session-1", make_upload())
+    result = await speech_service.process(object(), "session-1", make_upload())
 
+    assert result["transcription"] == "recognized words"
+    assert result["response"] == "Assistant reply"
+    assert result["audio_file"] is None
+    assert "temporarily unavailable" in result["audio_error"]
     assert list(Path(speech_module.settings.UPLOAD_FOLDER).iterdir()) == []
     assert list(Path(speech_module.settings.OUTPUT_FOLDER).iterdir()) == []
 
