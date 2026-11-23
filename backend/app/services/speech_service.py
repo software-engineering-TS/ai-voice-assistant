@@ -106,23 +106,47 @@ class SpeechService:
                 raise ValueError("Assistant returned an empty or invalid response.")
             response = response.strip()
 
+            audio_file = None
+            audio_error = None
             started = time.perf_counter()
-            await text_to_speech_service.generate(
-                text=response,
-                output_file=str(output_path),
-            )
-            app_logger.info(
-                "Text-to-Speech completed | "
-                f"Time={time.perf_counter() - started:.2f}s"
-            )
+            try:
+                await text_to_speech_service.generate(
+                    text=response,
+                    output_file=str(output_path),
+                )
+                app_logger.info(
+                    "Text-to-Speech completed | "
+                    f"Time={time.perf_counter() - started:.2f}s"
+                )
+                # StaticFiles is mounted at /outputs; return a URL path,
+                # never the local filesystem path configured by the operator.
+                audio_file = f"outputs/{output_filename}"
+            except Exception:
+                # Transcription and LLM response are already complete and
+                # persisted. An external TTS provider outage must not turn a
+                # successful voice conversation into an HTTP 500 response.
+                app_logger.exception(
+                    "Text-to-Speech unavailable; returning text response."
+                )
+                audio_error = (
+                    "Speech playback is temporarily unavailable. "
+                    "Your voice message was transcribed and answered."
+                )
+                try:
+                    if output_path.exists():
+                        output_path.unlink()
+                except OSError:
+                    app_logger.exception(
+                        "Failed to remove incomplete TTS output | "
+                        f"File={output_path}"
+                    )
 
             completed = True
             return {
                 "transcription": transcription,
                 "response": response,
-                # StaticFiles is mounted at /outputs; return a URL path,
-                # never the local filesystem path configured by the operator.
-                "audio_file": f"outputs/{output_filename}",
+                "audio_file": audio_file,
+                "audio_error": audio_error,
             }
         finally:
             if not completed and output_path is not None:
