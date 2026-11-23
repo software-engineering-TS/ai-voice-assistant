@@ -58,8 +58,17 @@ def send_voice(session_id: str, audio_bytes: bytes) -> dict[str, Any]:
     response.raise_for_status()
     result = _unwrap_api_response(response.json())
 
-    audio_path = str(result.get("audio_file", "")).lstrip("/")
-    if not audio_path or ".." in audio_path.split("/"):
+    result["audio_bytes"] = None
+    raw_audio_path = result.get("audio_file")
+
+    # Voice recognition and LLM response remain useful when an external
+    # TTS provider is unavailable. In that case, return the text result and
+    # let the UI show the supplied audio_error message.
+    if not raw_audio_path:
+        return result
+
+    audio_path = str(raw_audio_path).lstrip("/")
+    if not audio_path.startswith("outputs/") or ".." in audio_path.split("/"):
         raise RuntimeError("The backend returned an invalid audio path.")
 
     audio_response = requests.get(
@@ -70,6 +79,30 @@ def send_voice(session_id: str, audio_bytes: bytes) -> dict[str, Any]:
     audio_response.raise_for_status()
     result["audio_bytes"] = audio_response.content
     return result
+
+
+def upload_document(filename: str, document_bytes: bytes) -> dict[str, Any]:
+    """Upload and index a supported document through the RAG API."""
+    if not filename or not filename.lower().endswith(".pdf"):
+        raise ValueError("Please select a PDF document.")
+
+    if not document_bytes:
+        raise ValueError("The selected PDF is empty.")
+
+    response = requests.post(
+        f"{API_URL}/rag/extract",
+        files={
+            "file": (
+                filename,
+                BytesIO(document_bytes),
+                "application/pdf",
+            )
+        },
+        headers=_headers(),
+        timeout=API_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    return _unwrap_api_response(response.json())
 
 
 def delete_conversation(session_id: str) -> dict[str, Any]:
