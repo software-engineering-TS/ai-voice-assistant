@@ -69,22 +69,28 @@ async def test_process_speech_pipeline_and_unique_output(speech_service, monkeyp
 
 @pytest.mark.asyncio
 async def test_process_rejects_unsafe_session_id_before_writing(speech_service):
+    upload = make_upload()
     with pytest.raises(ValueError, match="session_id"):
-        await speech_service.process(object(), "../../outside", make_upload())
+        await speech_service.process(object(), "../../outside", upload)
 
+    assert upload.file.closed
     assert not Path(speech_module.settings.UPLOAD_FOLDER).exists()
 
 
 @pytest.mark.asyncio
 async def test_process_rejects_missing_filename(speech_service):
+    upload = make_upload(filename="")
     with pytest.raises(ValueError, match="filename"):
-        await speech_service.process(object(), "session-1", make_upload(filename=""))
+        await speech_service.process(object(), "session-1", upload)
+    assert upload.file.closed
 
 
 @pytest.mark.asyncio
 async def test_process_rejects_unsupported_audio_extension(speech_service):
+    upload = make_upload(filename="payload.exe")
     with pytest.raises(ValueError, match="supported extension"):
-        await speech_service.process(object(), "session-1", make_upload(filename="payload.exe"))
+        await speech_service.process(object(), "session-1", upload)
+    assert upload.file.closed
 
 
 @pytest.mark.asyncio
@@ -165,16 +171,22 @@ async def test_process_rejects_empty_assistant_response(speech_service, monkeypa
 @pytest.mark.asyncio
 async def test_process_propagates_tts_failure_and_cleans_temp_audio(speech_service, monkeypatch):
     patch_successful_pipeline(monkeypatch)
+
+    async def fail_after_partial_output(text, output_file):
+        Path(output_file).write_bytes(b"partial mp3")
+        raise RuntimeError("tts failed")
+
     monkeypatch.setattr(
         speech_module.text_to_speech_service,
         "generate",
-        AsyncMock(side_effect=RuntimeError("tts failed")),
+        fail_after_partial_output,
     )
 
     with pytest.raises(RuntimeError, match="tts failed"):
         await speech_service.process(object(), "session-1", make_upload())
 
     assert list(Path(speech_module.settings.UPLOAD_FOLDER).iterdir()) == []
+    assert list(Path(speech_module.settings.OUTPUT_FOLDER).iterdir()) == []
 
 
 @pytest.mark.asyncio
