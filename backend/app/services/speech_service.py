@@ -27,43 +27,51 @@ class SpeechService:
         session_id: str,
         file: UploadFile,
     ) -> dict:
-        session_id = validate_session_id(session_id)
+        """Process one audio request and always close/remove temporary input."""
+        audio_path: Path | None = None
+        output_path: Path | None = None
+        completed = False
 
-        original_name = (file.filename or "").strip()
-        if not original_name:
-            raise ValueError("Uploaded audio file must have a filename.")
+        try:
+            session_id = validate_session_id(session_id)
 
-        original_filename = Path(original_name).name
-        extension = Path(original_filename).suffix.lower()
-        if extension not in self.ALLOWED_AUDIO_EXTENSIONS:
-            raise ValueError(
-                "Audio filename must use a supported extension: "
-                + ", ".join(sorted(self.ALLOWED_AUDIO_EXTENSIONS))
+            original_name = (file.filename or "").strip()
+            if not original_name:
+                raise ValueError("Uploaded audio file must have a filename.")
+
+            # The client filename is used only for extension validation/logging.
+            # It is never used as a storage path.
+            original_filename = Path(original_name).name
+            extension = Path(original_filename).suffix.lower()
+            if extension not in self.ALLOWED_AUDIO_EXTENSIONS:
+                raise ValueError(
+                    "Audio filename must use a supported extension: "
+                    + ", ".join(sorted(self.ALLOWED_AUDIO_EXTENSIONS))
+                )
+
+            max_bytes = settings.MAX_AUDIO_UPLOAD_SIZE_MB * 1024 * 1024
+            upload_dir = Path(settings.UPLOAD_FOLDER)
+            output_dir = Path(settings.OUTPUT_FOLDER)
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            request_id = uuid4().hex
+            audio_path = upload_dir / f"{request_id}{extension}"
+            output_filename = f"{request_id}_response.mp3"
+            output_path = output_dir / output_filename
+
+            app_logger.info(
+                "Audio upload received | "
+                f"Filename={original_filename} | Session={session_id}"
             )
 
-        max_bytes = settings.MAX_AUDIO_UPLOAD_SIZE_MB * 1024 * 1024
-        upload_dir = Path(settings.UPLOAD_FOLDER)
-        output_dir = Path(settings.OUTPUT_FOLDER)
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        request_id = uuid4().hex
-        temporary_filename = f"{request_id}{extension}"
-        audio_path = upload_dir / temporary_filename
-        output_filename = f"{request_id}_response.mp3"
-        output_path = output_dir / output_filename
-
-        app_logger.info(
-            f"Audio upload received | Filename={original_filename} | Session={session_id}"
-        )
-
-        total_bytes = 0
-        try:
+            total_bytes = 0
             with audio_path.open("wb") as buffer:
                 while True:
                     chunk = await file.read(self.UPLOAD_CHUNK_SIZE)
                     if not chunk:
                         break
+
                     total_bytes += len(chunk)
                     if total_bytes > max_bytes:
                         raise ValueError(
@@ -78,11 +86,14 @@ class SpeechService:
             started = time.perf_counter()
             transcription = speech_to_text_service.transcribe(str(audio_path))
             app_logger.info(
-                f"Speech-to-Text completed | Time={time.perf_counter() - started:.2f}s"
+                "Speech-to-Text completed | "
+                f"Time={time.perf_counter() - started:.2f}s"
             )
 
             if not isinstance(transcription, str) or not transcription.strip():
-                raise ValueError("Speech-to-Text returned an empty or invalid transcription.")
+                raise ValueError(
+                    "Speech-to-Text returned an empty or invalid transcription."
+                )
             transcription = transcription.strip()
 
             assistant_response = await assistant_service.generate_response(
@@ -101,31 +112,51 @@ class SpeechService:
                 output_file=str(output_path),
             )
             app_logger.info(
-                f"Text-to-Speech completed | Time={time.perf_counter() - started:.2f}s"
+                "Text-to-Speech completed | "
+                f"Time={time.perf_counter() - started:.2f}s"
             )
 
+            completed = True
             return {
                 "transcription": transcription,
                 "response": response,
-                "audio_file": f"{settings.OUTPUT_FOLDER}/{output_filename}",
+                # StaticFiles is mounted at /outputs; return a URL path,
+                # never the local filesystem path configured by the operator.
+                "audio_file": f"outputs/{output_filename}",
             }
         finally:
-            try:
-                if audio_path.exists():
-                    audio_path.unlink()
-            except OSError:
-                app_logger.exception(f"Failed to remove temporary audio file {audio_path}")
+            if not completed and output_path is not None:
+                try:
+                    if output_path.exists():
+                        output_path.unlink()
+                except OSError:
+                    app_logger.exception(
+                        "Failed to remove incomplete audio output | "
+                        f"File={output_path}"
+                    )
+
+            if audio_path is not None:
+                try:
+                    if audio_path.exists():
+                        audio_path.unlink()
+                except OSError:
+                    app_logger.exception(
+                        "Failed to remove temporary audio file | "
+                        f"File={audio_path}"
+                    )
+
             await file.close()
 
     async def tts_test(self) -> dict:
         output_dir = Path(settings.OUTPUT_FOLDER)
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"tts-test-{uuid4().hex}.mp3"
-        output = await text_to_speech_service.generate(
+        output_filename = f"tts-test-{uuid4().hex}.mp3"
+        output_path = output_dir / output_filename
+        await text_to_speech_service.generate(
             text="Hello. Welcome to your AI Voice Assistant.",
             output_file=str(output_path),
         )
-        return {"audio": output}
+        return {"audio": f"outputs/{output_filename}"}
 
 
 speech_service = SpeechService()
