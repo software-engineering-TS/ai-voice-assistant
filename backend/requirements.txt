@@ -31,4 +31,4 @@ python-pptx>=1.0,<2.0
 
 # Speech processing
 faster-whisper>=1.0,<2.0
-edge-tts>=7.3.0,<8.0
+edge-tts>=7.3.1,<8.0
