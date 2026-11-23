@@ -18,7 +18,7 @@ The root `pytest.ini` adds `backend` to the Python import path, discovers tests 
 
 ## What is covered
 
-The existing suite covers assistant orchestration, chat/conversation APIs, SQLAlchemy repository behavior, document loaders, document ingestion, embeddings, vector storage, retrieval, reranking, middleware, speech processing and prompt construction. Additional regression tests cover session ID validation, audio upload size limits, safe temporary filenames and unique generated audio names.
+The existing suite covers assistant orchestration, chat/conversation APIs, SQLAlchemy repository behavior, document loaders, document ingestion, embeddings, vector storage, retrieval, reranking, middleware, speech processing and prompt construction. Additional regression tests cover session ID validation, audio upload size limits, safe temporary filenames and unique generated audio names, text-only voice responses when TTS is unavailable, and Streamlit API-client PDF upload behavior.
 
 ## External integrations
 
@@ -28,7 +28,7 @@ The automated suite should not make live calls to Ollama, Edge-TTS or Hugging Fa
 2. Start the backend and inspect `/health`.
 3. Submit a text request through Streamlit or `/chat`.
 4. Record a short voice sample and verify transcription, response generation and audio playback.
-5. Upload a non-sensitive sample document through `/rag/extract` and verify that the document appears in `/documents` and can be used in a grounded query.
+5. Upload a non-sensitive PDF from the Streamlit sidebar (or through `/rag/extract`) and verify that the document appears in `/documents` and can be used in a grounded query.
 
 ## Continuous integration
 
