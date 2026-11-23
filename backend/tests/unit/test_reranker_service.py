@@ -577,3 +577,20 @@ def test_rerank_skips_whitespace_chunks(monkeypatch):
     )
 
     assert result == []
+
+def test_reranker_can_be_loaded_lazily(monkeypatch):
+    calls = []
+
+    def create_model(model_name):
+        calls.append(model_name)
+        return FakeCrossEncoder(model_name)
+
+    monkeypatch.setattr(reranker_module, "CrossEncoder", create_model)
+    service = reranker_module.RerankerService(lazy=True)
+
+    assert service.model is None
+    assert calls == []
+
+    service.ensure_loaded()
+    assert service.model is not None
+    assert calls == [service.model_name]
