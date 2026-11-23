@@ -523,3 +523,25 @@ def test_generate_embeddings_rejects_non_list_vector(
         match="Invalid embedding returned",
     ):
         service.generate_embeddings(["Test chunk."])
+
+def test_shared_embedding_service_is_lazy(monkeypatch):
+    calls = []
+
+    class LazyFakeModel(FakeEmbeddingModel):
+        def __init__(self, dimension=3):
+            calls.append("loaded")
+            super().__init__(dimension)
+
+    monkeypatch.setattr(
+        embedding_module,
+        "SentenceTransformer",
+        lambda model_name: LazyFakeModel(),
+    )
+    service = embedding_module.EmbeddingService(lazy=True)
+
+    assert service.model is None
+    assert calls == []
+
+    service.ensure_loaded()
+    assert service.model is not None
+    assert calls == ["loaded"]
