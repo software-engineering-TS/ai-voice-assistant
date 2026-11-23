@@ -6,7 +6,7 @@ import requests
 import streamlit as st
 from audio_recorder_streamlit import audio_recorder
 
-from api import send_chat, send_voice
+from api import send_chat, send_voice, upload_document
 
 st.set_page_config(
     page_title="AI Voice Assistant",
@@ -38,12 +38,42 @@ with st.sidebar:
     st.divider()
     st.toggle("Dark Mode", value=True)
     st.divider()
-    st.file_uploader(
+    uploaded_pdf = st.file_uploader(
         "📄 Upload PDF",
         type=["pdf"],
-        disabled=True,
-        help="Document upload is available through the backend API; frontend integration is not implemented yet.",
+        key="document_uploader",
+        help="Select a PDF up to 20 MB, then choose Index PDF.",
     )
+    if uploaded_pdf is not None:
+        pdf_size = uploaded_pdf.size
+        st.caption(f"Selected: {uploaded_pdf.name} · {pdf_size / (1024 * 1024):.2f} MB")
+        if st.button("📚 Index PDF", key="index_pdf_button"):
+            if pdf_size > 20 * 1024 * 1024:
+                st.error("The PDF exceeds the 20 MB upload limit.")
+            else:
+                with st.spinner("Extracting text and indexing document..."):
+                    try:
+                        result = upload_document(
+                            uploaded_pdf.name,
+                            uploaded_pdf.getvalue(),
+                        )
+                        if result.get("duplicate"):
+                            st.info("This PDF is already indexed.")
+                        else:
+                            st.success(
+                                f"PDF indexed successfully: "
+                                f"{result.get('chunks', 0)} chunks created."
+                            )
+                            st.caption(
+                                f"Extracted {result.get('characters', 0):,} characters "
+                                f"in {result.get('processing_time', 0)} seconds."
+                            )
+                            preview = result.get("preview")
+                            if preview:
+                                with st.expander("Extracted text preview"):
+                                    st.write(preview)
+                    except (requests.RequestException, RuntimeError, ValueError) as exc:
+                        st.error(f"Unable to index the PDF: {exc}")
 
 st.title("🤖 AI Voice Assistant")
 st.caption("Local LLM chat, document retrieval and voice processing")
@@ -88,11 +118,13 @@ with voice_tab:
         with st.spinner("🤖 Transcribing and generating a response..."):
             try:
                 result = send_voice(st.session_state.session_id, audio_bytes)
-                st.success("Speech processed successfully")
+                st.success("Voice message transcribed and answered.")
                 st.write(f"**You:** {result.get('transcription', '')}")
                 st.write(f"**Assistant:** {result.get('response', '')}")
                 audio_content = result.get("audio_bytes")
                 if audio_content:
                     st.audio(audio_content, format="audio/mp3")
+                elif result.get("audio_error"):
+                    st.warning(result["audio_error"])
             except (requests.RequestException, RuntimeError, ValueError) as exc:
                 st.error(f"Unable to process the voice message: {exc}")
