@@ -32,4 +32,4 @@ The automated suite should not make live calls to Ollama, Edge-TTS or Hugging Fa
 
 ## Continuous integration
 
-`.github/workflows/tests.yml` runs the backend tests on Python 3.12 for pushes to `main` and `hardening/**` branches and for pull requests targeting `main`.
+`.github/workflows/tests.yml` runs the backend test suite on Python 3.12 for pushes to `main` and for pull requests targeting `main`.
