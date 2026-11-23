@@ -29,9 +29,13 @@ class SpeechService:
     ) -> dict:
         session_id = validate_session_id(session_id)
 
-        original_filename = Path(file.filename or "").name
+        original_name = (file.filename or "").strip()
+        if not original_name:
+            raise ValueError("Uploaded audio file must have a filename.")
+
+        original_filename = Path(original_name).name
         extension = Path(original_filename).suffix.lower()
-        if not original_filename or extension not in self.ALLOWED_AUDIO_EXTENSIONS:
+        if extension not in self.ALLOWED_AUDIO_EXTENSIONS:
             raise ValueError(
                 "Audio filename must use a supported extension: "
                 + ", ".join(sorted(self.ALLOWED_AUDIO_EXTENSIONS))
@@ -103,7 +107,7 @@ class SpeechService:
             return {
                 "transcription": transcription,
                 "response": response,
-                "audio_file": f"outputs/{output_filename}",
+                "audio_file": f"{settings.OUTPUT_FOLDER}/{output_filename}",
             }
         finally:
             try:
