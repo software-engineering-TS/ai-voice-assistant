@@ -1,0 +1,6 @@
+[server]
+# Keep the browser uploader aligned with the backend's 20 MB document limit.
+maxUploadSize = 20
+
+[browser]
+gatherUsageStats = false

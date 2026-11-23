@@ -7,6 +7,7 @@ from app.assistant.conversation_service import (
 from app.config.logging_config import app_logger
 from app.database.database import get_db
 from app.models.response import ApiResponse
+from app.security import validate_session_id
 
 
 router = APIRouter(
@@ -205,13 +206,16 @@ async def get_history(
     """
 
     session_id = session_id.strip()
-
     if not session_id:
-
         raise HTTPException(
             status_code=400,
             detail="Session ID cannot be empty.",
         )
+
+    try:
+        session_id = validate_session_id(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     app_logger.info(
         "Fetching conversation history | "
@@ -296,13 +300,16 @@ async def delete_session(
     """
 
     session_id = session_id.strip()
-
     if not session_id:
-
         raise HTTPException(
             status_code=400,
             detail="Session ID cannot be empty.",
         )
+
+    try:
+        session_id = validate_session_id(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     app_logger.warning(
         "Deleting conversation | "

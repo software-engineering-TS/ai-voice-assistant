@@ -196,3 +196,28 @@ def test_root_route_exists():
     ]
 
     assert "/" in routes
+
+def test_optional_bearer_auth_protects_generated_files(monkeypatch):
+    monkeypatch.setattr(main.settings, "API_ACCESS_TOKEN", "test-secret")
+    client = TestClient(main.app, raise_server_exceptions=False)
+
+    unauthorized = client.get(
+        "/outputs/not-a-real-file.mp3",
+        headers={"Origin": "http://localhost:8501"},
+    )
+    assert unauthorized.status_code == 401
+    assert unauthorized.headers.get("access-control-allow-origin") == "http://localhost:8501"
+
+    authorized = client.get(
+        "/outputs/not-a-real-file.mp3",
+        headers={"Authorization": "Bearer test-secret"},
+    )
+    assert authorized.status_code == 404
+
+
+def test_public_home_endpoint_remains_available_with_token_enabled(monkeypatch):
+    monkeypatch.setattr(main.settings, "API_ACCESS_TOKEN", "test-secret")
+    client = TestClient(main.app, raise_server_exceptions=False)
+
+    response = client.get("/")
+    assert response.status_code == 200

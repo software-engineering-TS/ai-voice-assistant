@@ -14,36 +14,31 @@ class RerankerService:
     query/document pair for semantic relevance.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, lazy: bool = False) -> None:
+        self.model_name = settings.RERANKER_MODEL
+        self.model = None
+        self._lazy = lazy
 
-        model_name = settings.RERANKER_MODEL
+        if not self.model_name:
+            raise ValueError("RERANKER_MODEL is not configured.")
 
-        if not model_name:
-            raise ValueError(
-                "RERANKER_MODEL is not configured."
-            )
+        if not self._lazy:
+            self.ensure_loaded()
 
-        app_logger.info(
-            f"Loading reranker model | Model={model_name}"
-        )
+    def ensure_loaded(self) -> None:
+        """Load the configured cross-encoder only when it is needed."""
+        if self.model is not None:
+            return
 
+        app_logger.info("Loading reranker model | Model=%s", self.model_name)
         try:
-
-            self.model = CrossEncoder(
-                model_name
-            )
-
+            model = CrossEncoder(self.model_name)
         except Exception:
-
-            app_logger.exception(
-                "Failed to load reranker model."
-            )
-
+            app_logger.exception("Failed to load reranker model.")
             raise
 
-        app_logger.info(
-            "Reranker model loaded successfully."
-        )
+        self.model = model
+        app_logger.info("Reranker model loaded successfully.")
 
     # ============================================================
     # Rerank Documents
@@ -132,6 +127,8 @@ class RerankerService:
             )
 
             return []
+
+        self.ensure_loaded()
 
         app_logger.info(
             "Reranking documents | "
@@ -342,4 +339,4 @@ class RerankerService:
 # Shared Service Instance
 # ============================================================
 
-reranker_service = RerankerService()
+reranker_service = RerankerService(lazy=True)

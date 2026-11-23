@@ -105,3 +105,11 @@ backend/uploads/
 
 backend/outputs/
 !backend/outputs/.gitkeep
+# Virtual environments and model caches
+.venv/
+venv/
+.envrc
+.cache/
+huggingface/
+.chroma/
+backend/data/

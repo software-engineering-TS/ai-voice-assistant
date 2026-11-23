@@ -151,6 +151,9 @@ class HealthService:
 
         try:
 
+            if hasattr(embedding_service, "ensure_loaded"):
+                embedding_service.ensure_loaded()
+
             if embedding_service.model is None:
 
                 raise RuntimeError(
@@ -185,6 +188,9 @@ class HealthService:
         # ========================================================
 
         try:
+
+            if hasattr(reranker_service, "ensure_loaded"):
+                reranker_service.ensure_loaded()
 
             if reranker_service.model is None:
 

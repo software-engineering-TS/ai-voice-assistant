@@ -9,6 +9,7 @@ from app.database.repository import conversation_repository
 from app.llm.ollama_client import ollama_client
 from app.prompts.prompt_builder import prompt_builder
 from app.rag.retrieval_service import retrieval_service
+from app.security import validate_session_id
 
 
 class AssistantService:
@@ -55,14 +56,8 @@ class AssistantService:
                 "user_message must be a string."
             )
 
-        session_id = session_id.strip()
+        session_id = validate_session_id(session_id)
         user_message = user_message.strip()
-
-        if not session_id:
-
-            raise ValueError(
-                "session_id cannot be empty."
-            )
 
         if not user_message:
 

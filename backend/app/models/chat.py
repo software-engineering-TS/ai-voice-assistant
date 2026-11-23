@@ -15,7 +15,8 @@ class ChatRequest(BaseModel):
         ...,
         min_length=1,
         max_length=100,
-        description="Unique conversation session identifier.",
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$",
+        description="Unique conversation session identifier (letters, numbers, hyphens and underscores).",
         examples=["tarun"],
     )
 

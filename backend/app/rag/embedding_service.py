@@ -19,64 +19,47 @@ class EmbeddingService:
     will not be compatible.
     """
 
-    def __init__(self) -> None:
-
-        self.model_name = (
-            settings.EMBEDDING_MODEL
-        )
+    def __init__(self, lazy: bool = False) -> None:
+        self.model_name = settings.EMBEDDING_MODEL
+        self.model = None
+        self.embedding_dimension = None
+        self._lazy = lazy
 
         if not self.model_name:
-            raise ValueError(
-                "EMBEDDING_MODEL is not configured."
-            )
+            raise ValueError("EMBEDDING_MODEL is not configured.")
 
-        app_logger.info(
-            f"Loading embedding model | "
-            f"Model={self.model_name}"
-        )
+        # Explicitly constructed services remain eager for backwards
+        # compatibility and predictable unit tests. The shared app-level
+        # instance is lazy so importing FastAPI does not download models.
+        if not self._lazy:
+            self.ensure_loaded()
 
+    def ensure_loaded(self) -> None:
+        """Load the configured embedding model once, on first use."""
+        if self.model is not None:
+            return
+
+        app_logger.info("Loading embedding model | Model=%s", self.model_name)
         try:
-
-            self.model = SentenceTransformer(
-                self.model_name
-            )
-
-        except Exception:
-
-            app_logger.exception(
-                "Failed to load embedding model."
-            )
-
-            raise
-
-        # --------------------------------------------------------
-        # Determine Embedding Dimension
-        # --------------------------------------------------------
-
-        try:
-            if hasattr(self.model, "get_embedding_dimension"):
-                self.embedding_dimension = self.model.get_embedding_dimension()
+            model = SentenceTransformer(self.model_name)
+            if hasattr(model, "get_embedding_dimension"):
+                dimension = model.get_embedding_dimension()
             else:
-                self.embedding_dimension = (
-                    self.model.get_sentence_embedding_dimension()
-                )
-        
+                dimension = model.get_sentence_embedding_dimension()
         except Exception:
-            app_logger.exception(
-                "Failed to determine embedding dimension."
-            )
+            app_logger.exception("Failed to load embedding model.")
             raise
 
-        if not self.embedding_dimension:
-
+        if not dimension:
             raise ValueError(
-                "Embedding model returned an invalid "
-                "embedding dimension."
+                "Embedding model returned an invalid embedding dimension."
             )
 
+        self.model = model
+        self.embedding_dimension = int(dimension)
         app_logger.info(
-            f"Embedding model loaded successfully | "
-            f"Dimension={self.embedding_dimension}"
+            "Embedding model loaded successfully | Dimension=%d",
+            self.embedding_dimension,
         )
 
     # ============================================================
@@ -100,6 +83,8 @@ class EmbeddingService:
             )
 
             return []
+
+        self.ensure_loaded()
 
         # --------------------------------------------------------
         # Validate Input
@@ -258,4 +243,4 @@ class EmbeddingService:
 # Shared Service Instance
 # ============================================================
 
-embedding_service = EmbeddingService()
+embedding_service = EmbeddingService(lazy=True)

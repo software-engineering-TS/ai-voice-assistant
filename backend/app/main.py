@@ -10,7 +10,11 @@ from pathlib import Path
 # Third Party
 # ============================================================
 
-from fastapi import FastAPI
+import secrets
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
@@ -161,13 +165,39 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description=(
-        "Production-ready AI Voice Assistant "
-        "with RAG, conversation memory, "
-        "speech-to-text, text-to-speech, "
-        "and general AI capabilities."
+        "Local-first AI Voice Assistant with RAG, conversation memory, "
+        "speech-to-text and text-to-speech. Remote deployment requires "
+        "an API access token and HTTPS at the hosting layer."
     ),
     lifespan=lifespan,
 )
+
+allowed_origins = [
+    origin.strip()
+    for origin in settings.ALLOWED_ORIGINS.split(",")
+    if origin.strip()
+]
+
+
+@app.middleware("http")
+async def optional_bearer_auth(request: Request, call_next):
+    """Protect API and generated files when an access token is configured.
+
+    Local development remains frictionless when API_ACCESS_TOKEN is empty.
+    CORS is not authentication; this check applies to every non-public route.
+    """
+    token = settings.API_ACCESS_TOKEN.strip()
+    public_paths = {"/", "/health", "/health/", "/docs", "/redoc", "/openapi.json"}
+    if token and request.url.path not in public_paths and request.method != "OPTIONS":
+        authorization = request.headers.get("Authorization", "")
+        expected = f"Bearer {token}"
+        if not secrets.compare_digest(authorization, expected):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Missing or invalid API access token."},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    return await call_next(request)
 
 
 # ============================================================
@@ -181,6 +211,17 @@ app.middleware(
 app.middleware(
     "http"
 )(log_requests)
+
+
+# Keep CORS outermost so browser clients can read both successful and
+# authentication-error responses. CORS still does not replace the token check.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 
 # ============================================================

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     # ============================================================
 
     APP_NAME: str = "AI Voice Assistant"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "1.1.0"
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
 
@@ -89,6 +89,11 @@ class Settings(BaseSettings):
     WHISPER_DEVICE: str = "cpu"
 
     WHISPER_COMPUTE_TYPE: str = "int8"
+
+    MAX_AUDIO_UPLOAD_SIZE_MB: int = Field(
+        default=20,
+        gt=0,
+    )
 
     # ============================================================
     # File Storage
@@ -171,8 +176,12 @@ class Settings(BaseSettings):
     # ============================================================
 
     ALLOWED_ORIGINS: str = (
-        "http://localhost:5173"
+        "http://localhost:8501,http://127.0.0.1:8501"
     )
+
+    # Optional shared bearer token. Leave blank for localhost-only
+    # development; configure a strong random value before network exposure.
+    API_ACCESS_TOKEN: str = ""
 
     # ============================================================
     # Pydantic Settings
