@@ -1,41 +1,7 @@
-import requests
+"""Compatibility imports for older Streamlit page modules."""
 
-API_URL = "http://127.0.0.1:8000"
+from api import delete_conversation, send_chat, send_voice
 
+send_message = send_chat
 
-def send_message(session_id: str, message: str):
-
-    response = requests.post(
-        f"{API_URL}/chat",
-        json={
-            "session_id": session_id,
-            "message": message,
-        },
-    )
-
-    response.raise_for_status()
-
-    return response.json()
-
-
-def send_voice(session_id: str, audio_file):
-
-    files = {
-        "file": (
-            audio_file.name,
-            audio_file,
-            "audio/wav",
-        )
-    }
-
-    response = requests.post(
-        f"{API_URL}/speech/chat",
-        params={
-            "session_id": session_id,
-        },
-        files=files,
-    )
-
-    response.raise_for_status()
-
-    return response.json()
+__all__ = ["delete_conversation", "send_chat", "send_message", "send_voice"]
