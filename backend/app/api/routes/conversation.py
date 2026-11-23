@@ -205,6 +205,13 @@ async def get_history(
     Retrieve conversation history for a session.
     """
 
+    session_id = session_id.strip()
+    if not session_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Session ID cannot be empty.",
+        )
+
     try:
         session_id = validate_session_id(session_id)
     except ValueError as exc:
@@ -291,6 +298,13 @@ async def delete_session(
     """
     Delete a single conversation session.
     """
+
+    session_id = session_id.strip()
+    if not session_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Session ID cannot be empty.",
+        )
 
     try:
         session_id = validate_session_id(session_id)
